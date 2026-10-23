@@ -98,3 +98,17 @@ alter table public.jurnal enable row level security;
 drop policy if exists "akun login akses jurnal" on public.jurnal;
 create policy "akun login akses jurnal" on public.jurnal
   for all to authenticated using (true) with check (true);
+
+-- v7: Realtime — agar server mendorong PAP/sinyal baru ke aplikasi dalam ±1 detik
+-- (dipakai aplikasi Android v2.5+ & web; aman dijalankan berulang)
+do $$
+begin
+  begin
+    alter publication supabase_realtime add table public.pap;
+  exception when duplicate_object then null;
+  end;
+  begin
+    alter publication supabase_realtime add table public.sinyal;
+  exception when duplicate_object then null;
+  end;
+end $$;

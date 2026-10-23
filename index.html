@@ -263,6 +263,23 @@ function masukUtama() {
   tampil("utama");
   tulisJurnal("masuk ke aplikasi 🔓 (web)");
   muatSemua();
+  pasangRealtime();
+}
+
+// Realtime: server mendorong pemberitahuan begitu pasangan mengirim PAP/sinyal,
+// jadi tampilan berubah ±1-3 detik (selama aplikasi terbuka). Butuh SQL v7
+// (publication supabase_realtime). Interval 20 detik tetap jadi cadangan.
+let kanalRealtime = null, kanalUntuk = "";
+function pasangRealtime() {
+  try {
+    if (kanalRealtime && kanalUntuk === pasangan) return;
+    if (kanalRealtime) { sb.removeChannel(kanalRealtime); kanalRealtime = null; }
+    kanalUntuk = pasangan;
+    kanalRealtime = sb.channel("berdua-live-" + pasangan)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "pap", filter: "sender=eq." + pasangan }, () => muatSemua())
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "sinyal", filter: "sender=eq." + pasangan }, () => muatSemua())
+      .subscribe();
+  } catch (e) { /* diamkan: interval tetap berjalan */ }
 }
 
 $("btnLogin").onclick = async () => {
