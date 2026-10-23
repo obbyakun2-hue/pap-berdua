@@ -32,7 +32,9 @@
   .pilih { display: flex; gap: 10px; }
   .pilih button { flex: 1; }
   .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .grid img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; cursor: pointer; background: #0B1220; }
+  .grid .sel { position: relative; }
+  .grid img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; cursor: pointer; background: #0B1220; display: block; }
+  .grid .lencana { position: absolute; right: 5px; bottom: 5px; background: rgba(2,6,23,.75); border-radius: 8px; font-size: 12px; padding: 2px 6px; }
   .switchbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .switchbar span { font-size: 14px; line-height: 1.45; }
   .toggle { position: relative; width: 52px; height: 30px; flex: none; }
@@ -44,11 +46,23 @@
   .banner { background: #422006; border: 1px solid #B45309; color: #FDE68A; border-radius: 12px; padding: 12px; font-size: 14px; line-height: 1.6; margin-bottom: 14px; display: none; }
   .kosong { text-align: center; color: #64748B; padding: 26px 10px; font-size: 14px; line-height: 1.6; }
   #lightbox { position: fixed; inset: 0; background: rgba(2,6,23,.94); display: none; align-items: center; justify-content: center; z-index: 50; padding: 14px; }
-  #lightbox img { max-width: 100%; max-height: 88vh; border-radius: 12px; }
+  #lightbox img, #lightbox video { max-width: 100%; max-height: 88vh; border-radius: 12px; }
   .atas { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
   .link-kecil { color: #7DD3FC; font-size: 13px; cursor: pointer; background: none; width: auto; padding: 4px; font-weight: 600; }
   #preview { width: 100%; border-radius: 12px; display: none; margin-bottom: 10px; }
   .status { text-align: center; font-size: 13px; color: #A7F3D0; min-height: 18px; margin-top: 8px; }
+  .baris { display: flex; gap: 8px; }
+  .baris button { flex: 1; font-size: 14px; padding: 11px 6px; }
+  .chip { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip button { width: auto; flex: 1; min-width: 64px; font-size: 20px; padding: 10px 6px; background: #334155; }
+  .streak { background: #7C2D12; border-color: #9A3412; color: #FFF7ED; font-size: 14px; line-height: 1.6; }
+  .dering-masuk { background: #7F1D1D; border-color: #DC2626; color: #FEF2F2; animation: kedip 1s infinite; }
+  @keyframes kedip { 50% { border-color: #FDE68A; } }
+  .daftar { font-size: 13.5px; line-height: 1.9; color: #E2E8F0; }
+  .daftar .w { color: #7DD3FC; }
+  .peringatan { color: #FCA5A5; font-weight: 700; }
+  .ok { color: #86EFAC; }
+  video.putar { width: 100%; border-radius: 12px; background: #000; display: block; }
 </style>
 </head>
 <body>
@@ -68,7 +82,7 @@
     <p class="meta" id="langkahAndroid" style="display:none;margin-top:2px">Di Android: kalau tombol pasang belum muncul, buka menu Chrome <b>⋮</b> → <b>“Instal aplikasi”</b> / <b>“Tambahkan ke Layar Utama”</b>.</p>
   </div>
 
-  <div class="banner" id="bannerSql">⚠️ Fitur PAP belum aktif di database. Jalankan dulu SQL <b>pap-berdua.sql</b> di Supabase (SQL Editor → tempel → Run), lalu muat ulang halaman ini.</div>
+  <div class="banner" id="bannerSql">⚠️ Sebagian fitur belum aktif di database. Jalankan SQL <b>pap-berdua.sql</b> terbaru di Supabase (SQL Editor → tempel → Run), lalu muat ulang halaman ini.</div>
 
   <!-- LOGIN -->
   <div class="kartu" id="layarLogin" style="display:none">
@@ -92,33 +106,76 @@
 
   <!-- UTAMA -->
   <div id="layarUtama" style="display:none">
-    <div class="kartu">
-      <h2 id="judulTerbaru">PAP terbaru dari pasanganmu</h2>
-      <div id="isiTerbaru"><div class="kosong">Memuat…</div></div>
+    <div class="kartu streak" id="kartuStreak" style="display:none"><div id="isiStreak"></div></div>
+
+    <div class="kartu dering-masuk" id="kartuDering" style="display:none">
+      <h2 style="color:#FECACA">📞 Pasanganmu menderingkan HP ini!</h2>
+      <p class="meta" style="color:#FEE2E2;margin:0">Buka aplikasi Android-nya untuk pengalaman dering penuh. Di web, dering tampil sebagai pemberitahuan ini.</p>
     </div>
 
     <div class="kartu">
-      <h2>📍 Lokasi pasanganmu</h2>
+      <h2 id="judulTerbaru">PAP terbaru dari pasanganmu</h2>
+      <div id="isiTerbaru"><div class="kosong">Memuat…</div></div>
+      <div class="meta" id="isiStatusKu"></div>
+    </div>
+
+    <div class="kartu">
+      <h2>📍 Lokasi & status pasanganmu</h2>
       <div id="isiLokasi"><div class="kosong">Memuat…</div></div>
+      <div style="height:10px"></div>
+      <div class="baris">
+        <button class="sekunder" id="btnJejak">🗺️ Jejak Hari Ini</button>
+        <button class="sekunder" id="btnMintaLokasi" style="background:#7C3AED">📍 Minta Lokasinya</button>
+      </div>
+      <div id="isiJejak" style="display:none;margin-top:10px"></div>
+    </div>
+
+    <div class="kartu">
+      <h2>💌 Sinyal cepat & dering</h2>
+      <div class="chip">
+        <button id="sigHati">❤️</button>
+        <button id="sigCium">😘</button>
+        <button id="sigApi">🔥</button>
+        <button id="sigPesan">💬</button>
+      </div>
+      <div style="height:8px"></div>
+      <button id="btnDering" style="background:#DC2626">📞 DERINGKAN HP PASANGAN</button>
+      <div class="status" id="statusSinyal"></div>
+      <div class="meta" id="isiSinyalMasuk"></div>
     </div>
 
     <div class="kartu">
       <h2>📸 Kirim PAP sekarang</h2>
       <img id="preview" alt="Pratinjau foto">
+      <video id="previewVideo" class="putar" style="display:none;margin-bottom:10px" controls playsinline></video>
       <input type="text" id="caption" placeholder="Tulis caption (boleh kosong)">
-      <button id="btnAmbil">Ambil / Pilih Foto</button>
-      <input type="file" id="fileFoto" accept="image/*" capture="environment" style="display:none">
+      <div class="baris">
+        <button id="btnJepret">🤳 Jepret Sekarang</button>
+        <button id="btnGaleri" style="background:#475569">🖼️ Galeri</button>
+      </div>
+      <div style="height:8px"></div>
+      <button id="btnVideo" style="background:#7C3AED">🎬 Rekam Video PAP (maks ±10 detik)</button>
+      <input type="file" id="fileJepret" accept="image/*" capture="environment" style="display:none">
+      <input type="file" id="fileGaleri" accept="image/*" style="display:none">
+      <input type="file" id="fileVideo" accept="video/*" capture="environment" style="display:none">
       <button id="btnKirim" style="display:none;margin-top:10px;background:#22C55E">Kirim ke Pasangan 💌</button>
-      <p class="meta">Saat kamu menekan Kirim, lokasimu saat itu ikut terkirim (browser akan minta izin lokasi — pilih Izinkan). Foto TIDAK pernah diambil otomatis; hanya foto yang kamu pilih & kirim sendiri yang terkirim.</p>
+      <p class="meta">Foto dari <b>Jepret Sekarang</b> berstempel ✅ <b>PAP Langsung</b>; dari galeri berlabel 🖼️ jujur. Saat menekan Kirim, lokasimu saat itu ikut terkirim (browser akan minta izin lokasi). Foto/video TIDAK pernah diambil otomatis — hanya yang kamu pilih & kirim sendiri.</p>
       <div class="status" id="statusKirim"></div>
     </div>
 
     <div class="kartu">
       <div class="switchbar">
-        <span><b>Bagikan lokasiku (live)</b><br><span style="color:#94A3B8">Selama aplikasi ini terbuka, posisimu diperbarui tiap 30 detik agar pasangan bisa melihatmu. Matikan kapan saja.</span></span>
+        <span><b>Bagikan lokasiku (live)</b><br><span style="color:#94A3B8">Selama aplikasi ini terbuka, posisimu diperbarui tiap 30 detik agar pasangan bisa melihatmu. Di iPhone, berbagi berhenti saat aplikasi ditutup — itu batas iOS untuk web. Matikan kapan saja.</span></span>
         <label class="toggle"><input type="checkbox" id="toggleLokasi"><span class="jejak"></span></label>
       </div>
       <div class="status" id="statusLokasi"></div>
+    </div>
+
+    <div class="kartu">
+      <h2>🏠 Tempat Penting (notif sampai tujuan)</h2>
+      <div id="isiTempat"><div class="kosong">Memuat…</div></div>
+      <div style="height:8px"></div>
+      <button class="sekunder" id="btnTandai">➕ Tandai Posisi Saya Sekarang</button>
     </div>
 
     <div class="kartu">
@@ -127,11 +184,18 @@
       <div class="kosong" id="riwayatKosong" style="display:none">Belum ada PAP terkirim.</div>
     </div>
 
+    <div class="kartu">
+      <h2>📜 Jurnal Transparansi Berdua</h2>
+      <div id="isiJurnal"><div class="kosong">Tekan tombol untuk memuat jurnal.</div></div>
+      <div style="height:8px"></div>
+      <button class="sekunder" id="btnJurnal">Muat Jurnal</button>
+    </div>
+
     <button class="sekunder" id="btnGantiProfil">Ganti profil HP ini</button>
   </div>
 </div>
 
-<div id="lightbox"><img id="lightboxImg" alt="Foto besar"></div>
+<div id="lightbox"><img id="lightboxImg" alt="Foto besar"><video id="lightboxVideo" controls playsinline style="display:none"></video></div>
 
 <script>
 const SB_URL = "https://rwgwnrczdaucamubzhny.supabase.co";
@@ -142,10 +206,16 @@ const $ = id => document.getElementById(id);
 let saya = localStorage.getItem("pap_siapa") || "";
 let pasangan = "";
 let fotoData = null;
+let videoKirim = null; // {b64, poster}
+let sumberKirim = "galeri";
 let timerLive = null;
 let tabelOk = true;
+let tempatList = [];
+let dilihatTerakhirId = -1;
+let sinyalTerakhirId = Number(localStorage.getItem("pap_sinyal_terakhir") || -1);
 
 function namaCantik(x) { return x === "bobby" ? "Bobby" : "Killa"; }
+function esc(s) { return (s || "").replace(/</g, "&lt;"); }
 function sejak(iso) {
   const d = new Date(iso), s = Math.floor((Date.now() - d.getTime()) / 1000);
   if (s < 60) return "baru saja";
@@ -153,7 +223,26 @@ function sejak(iso) {
   if (s < 86400) return Math.floor(s / 3600) + " jam lalu";
   return Math.floor(s / 86400) + " hari lalu";
 }
+function jamWIB(iso) {
+  try { return new Date(iso).toLocaleTimeString("id-ID", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit" }); }
+  catch (e) { return ""; }
+}
+function tglWIB(iso) {
+  try { return new Date(iso).toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", day: "numeric", month: "short" }); }
+  catch (e) { return ""; }
+}
+function kunciHariWIB(d) {
+  return d.toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }); // yyyy-mm-dd
+}
 function tautanMaps(lat, lng) { return "https://www.google.com/maps?q=" + lat + "," + lng; }
+function jarakM(la1, lo1, la2, lo2) {
+  const R = 6371000, dLa = (la2 - la1) * Math.PI / 180, dLo = (lo2 - lo1) * Math.PI / 180;
+  const a = Math.sin(dLa / 2) ** 2 + Math.cos(la1 * Math.PI / 180) * Math.cos(la2 * Math.PI / 180) * Math.sin(dLo / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+async function tulisJurnal(peristiwa) {
+  try { await sb.from("jurnal").insert({ siapa: saya, peristiwa }); } catch (e) { }
+}
 
 async function cekSesi() {
   const { data } = await sb.auth.getSession();
@@ -172,6 +261,7 @@ function masukUtama() {
   $("siapaLabel").textContent = "HP ini: " + namaCantik(saya);
   $("judulTerbaru").textContent = "PAP terbaru dari " + namaCantik(pasangan);
   tampil("utama");
+  tulisJurnal("masuk ke aplikasi 🔓 (web)");
   muatSemua();
 }
 
@@ -189,60 +279,302 @@ $("pilihKilla").onclick = () => { saya = "killa"; localStorage.setItem("pap_siap
 $("btnGantiProfil").onclick = () => { localStorage.removeItem("pap_siapa"); saya = ""; tampil("pilih"); };
 
 function tandaiSqlBelumAda(err) {
-  if (err && /does not exist|relation .* not|schema cache/i.test(err.message || "")) {
+  if (err && /does not exist|relation .* not|schema cache|column/i.test(err.message || "")) {
     tabelOk = false; $("bannerSql").style.display = "block"; return true;
   }
   return false;
 }
 
+// ---------- Streak ----------
+async function muatStreak() {
+  try {
+    const { data } = await sb.from("pap").select("sender, created_at")
+      .order("created_at", { ascending: false }).limit(400);
+    if (!data) return;
+    const perSender = { bobby: new Set(), killa: new Set() };
+    data.forEach(r => { if (perSender[r.sender]) perSender[r.sender].add(kunciHariWIB(new Date(r.created_at))); });
+    const lengkap = tgl => perSender.bobby.has(tgl) && perSender.killa.has(tgl);
+    let streak = 0;
+    const geser = n => { const d = new Date(); d.setDate(d.getDate() - n); return kunciHariWIB(d); };
+    let mulai = lengkap(geser(0)) ? 0 : 1;
+    for (let i = mulai; i < 400; i++) { if (lengkap(geser(i))) streak++; else break; }
+    let rekor = 0, jalan = 0;
+    const semuaHari = new Set([...perSender.bobby, ...perSender.killa]);
+    [...semuaHari].sort().forEach(h => { if (lengkap(h)) { jalan++; rekor = Math.max(rekor, jalan); } else jalan = 0; });
+    const sHariIni = perSender[saya].has(geser(0)), pHariIni = perSender[pasangan].has(geser(0));
+    $("kartuStreak").style.display = "block";
+    $("isiStreak").innerHTML =
+      `🔥 <b>Streak PAP Berdua: ${streak} hari</b> (rekor ${rekor})<br>` +
+      `Hari ini: Kamu ${sHariIni ? "✅" : "⏳"} · ${namaCantik(pasangan)} ${pHariIni ? "✅" : "⏳"}` +
+      (sHariIni && pHariIni ? "<br>Hari ini lengkap — streak aman! 🎉"
+        : `<br>${!sHariIni ? "Kamu belum kirim PAP hari ini. " : ""}${!pHariIni ? namaCantik(pasangan) + " belum kirim PAP hari ini." : ""}`);
+  } catch (e) { }
+}
+
+// ---------- Terbaru, statusku, lokasi, sinyal masuk, tempat, riwayat ----------
 async function muatSemua() {
-  // PAP terbaru dari pasangan
-  const { data: ter, error: e1 } = await sb.from("pap").select("*")
-    .eq("sender", pasangan).order("created_at", { ascending: false }).limit(1);
-  if (tandaiSqlBelumAda(e1)) return;
+  muatStreak();
+  let ter = null;
+  {
+    const r = await sb.from("pap").select("id, sender, photo, caption, created_at, lat, lng, jenis, sumber, dilihat_pada")
+      .eq("sender", pasangan).order("created_at", { ascending: false }).limit(1);
+    if (tandaiSqlBelumAda(r.error)) {
+      const r2 = await sb.from("pap").select("*").eq("sender", pasangan)
+        .order("created_at", { ascending: false }).limit(1);
+      if (r2.data) ter = r2.data;
+    } else ter = r.data;
+  }
   if (ter && ter.length) {
     const p = ter[0];
     let loc = "";
     if (p.lat && p.lng) loc = `<br>📍 Lokasi saat kirim: <a href="${tautanMaps(p.lat, p.lng)}" target="_blank" rel="noopener">Buka di Maps</a>`;
-    $("isiTerbaru").innerHTML =
-      `<img class="foto-besar" src="${p.photo}" alt="PAP terbaru">
-       ${p.caption ? `<div class="caption">“${p.caption.replace(/</g, "&lt;")}”</div>` : ""}
-       <div class="meta">Dari ${namaCantik(p.sender)} · ${sejak(p.created_at)} · ${new Date(p.created_at).toLocaleString("id-ID")}${loc}</div>`;
-  } else {
+    let sumber = "";
+    if (p.sumber === "langsung") sumber = `<br><span class="ok">✅ PAP Langsung — dijepret di aplikasi saat itu juga</span>`;
+    else if (p.sumber === "galeri") sumber = `<br>🖼️ Dikirim dari galeri (bisa foto lama)`;
+    if (p.jenis === "video") {
+      $("isiTerbaru").innerHTML =
+        `<div style="position:relative"><img class="foto-besar" src="${p.photo}" alt="Cover video PAP">
+         <button id="btnPutarHero" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:auto;padding:14px 22px;border-radius:999px">▶ Putar Video</button></div>
+         ${p.caption ? `<div class="caption">“${esc(p.caption)}”</div>` : ""}
+         <div class="meta">🎬 Video PAP dari ${namaCantik(p.sender)} · ${sejak(p.created_at)} · ${tglWIB(p.created_at)} ${jamWIB(p.created_at)} WIB${sumber}${loc}</div>`;
+      $("btnPutarHero").onclick = () => putarVideo(p.id);
+    } else {
+      $("isiTerbaru").innerHTML =
+        `<img class="foto-besar" src="${p.photo}" alt="PAP terbaru">
+         ${p.caption ? `<div class="caption">“${esc(p.caption)}”</div>` : ""}
+         <div class="meta">Dari ${namaCantik(p.sender)} · ${sejak(p.created_at)} · ${tglWIB(p.created_at)} ${jamWIB(p.created_at)} WIB${sumber}${loc}</div>`;
+    }
+    // Tanda sudah dilihat (saya yang membuka halaman ini = sudah melihat)
+    if (p.id !== dilihatTerakhirId) {
+      dilihatTerakhirId = p.id;
+      if (!p.dilihat_pada) {
+        try {
+          await sb.from("pap").update({ dilihat_pada: new Date().toISOString() })
+            .eq("id", p.id).is("dilihat_pada", null);
+          tulisJurnal("melihat PAP terbaru " + namaCantik(pasangan));
+        } catch (e) { }
+      }
+    }
+  } else if (ter) {
     $("isiTerbaru").innerHTML = `<div class="kosong">Belum ada PAP dari ${namaCantik(pasangan)}.<br>Minta dia kirim yang pertama ya 💌</div>`;
   }
+  // Status PAP terakhirku
+  try {
+    const { data: ku } = await sb.from("pap").select("created_at, dilihat_pada")
+      .eq("sender", saya).order("created_at", { ascending: false }).limit(1);
+    if (ku && ku.length) {
+      const k = ku[0];
+      $("isiStatusKu").innerHTML = "📤 PAP terakhirku (terkirim " + jamWIB(k.created_at) + " WIB) — " +
+        (k.dilihat_pada ? `👁️ sudah dilihat ${namaCantik(pasangan)} pukul ${jamWIB(k.dilihat_pada)} WIB` : `belum dilihat ${namaCantik(pasangan)}`);
+    }
+  } catch (e) { }
+  // Tempat (untuk status lokasi pasangan)
+  try {
+    const { data: tp } = await sb.from("tempat").select("*").order("nama");
+    if (tp) { tempatList = tp; renderTempat(); }
+  } catch (e) { }
   // Lokasi terakhir pasangan
   const { data: lok, error: e2 } = await sb.from("lokasi").select("*").eq("sender", pasangan).limit(1);
   if (!tandaiSqlBelumAda(e2)) {
     if (lok && lok.length) {
       const l = lok[0];
+      let diTempat = "";
+      for (const t of tempatList) {
+        if (jarakM(l.lat, l.lng, t.lat, t.lng) <= (t.radius || 200)) { diTempat = `<br>🏠 Sedang di: <b>${esc(t.nama)}</b>`; break; }
+      }
+      let bat = "";
+      if (l.baterai !== null && l.baterai !== undefined) bat = `<br>🔋 Baterai ${namaCantik(pasangan)}: ${l.baterai}%${l.baterai <= 20 ? " — lagi sekarat, ingatkan ngecas ya 😄" : ""}`;
+      let palsu = l.palsu
+        ? `<br><span class="peringatan">⚠️ PERINGATAN: lokasi ini terdeteksi dari aplikasi FAKE GPS!</span>`
+        : `<br><span class="ok">🛰️ Lokasi terverifikasi (bukan Fake GPS)</span>`;
       $("isiLokasi").innerHTML =
-        `<div class="meta" style="margin-top:0">Terakhir diperbarui ${sejak(l.updated_at)} (${new Date(l.updated_at).toLocaleString("id-ID")})<br>
+        `<div class="meta" style="margin-top:0">Terakhir diperbarui ${sejak(l.updated_at)} (${tglWIB(l.updated_at)} ${jamWIB(l.updated_at)} WIB)${diTempat}${bat}${palsu}<br>
          📍 <a href="${tautanMaps(l.lat, l.lng)}" target="_blank" rel="noopener">Lihat posisi ${namaCantik(pasangan)} di Maps</a></div>`;
     } else {
       $("isiLokasi").innerHTML = `<div class="kosong">${namaCantik(pasangan)} belum membagikan lokasinya.</div>`;
     }
   }
+  // Sinyal masuk terbaru dari pasangan
+  try {
+    const { data: sg } = await sb.from("sinyal").select("*").eq("sender", pasangan)
+      .order("created_at", { ascending: false }).limit(1);
+    if (sg && sg.length) {
+      const s = sg[0];
+      const ikon = { hati: "❤️ mengirim hati", cium: "😘 mengirim cium", api: "🔥 menyemangatimu", dering: "📞 menderingkan HP-mu!", minta_lokasi: "📍 meminta lokasimu", pesan: "💬 " + esc(s.isi || "") };
+      $("isiSinyalMasuk").innerHTML = `Sinyal terakhir dari ${namaCantik(pasangan)}: ${ikon[s.kind] || s.kind} · ${sejak(s.created_at)}`;
+      if (s.id !== sinyalTerakhirId) {
+        const pertamaKali = sinyalTerakhirId === -1;
+        sinyalTerakhirId = s.id;
+        localStorage.setItem("pap_sinyal_terakhir", String(s.id));
+        if (!pertamaKali && s.kind === "minta_lokasi") {
+          const lokKu = await ambilLokasi();
+          if (lokKu) await sb.from("lokasi").upsert({ sender: saya, lat: lokKu.lat, lng: lokKu.lng, updated_at: new Date().toISOString() });
+        }
+        if (!pertamaKali && s.kind === "dering") {
+          $("kartuDering").style.display = "block";
+          if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 300]);
+          setTimeout(() => $("kartuDering").style.display = "none", 30000);
+        }
+      }
+    }
+  } catch (e) { }
   // Riwayat
-  const { data: riw } = await sb.from("pap").select("id, sender, photo, created_at")
-    .order("created_at", { ascending: false }).limit(12);
+  let riw = null;
+  {
+    const r = await sb.from("pap").select("id, sender, photo, created_at, jenis")
+      .order("created_at", { ascending: false }).limit(12);
+    if (r.error) { const r2 = await sb.from("pap").select("id, sender, photo, created_at").order("created_at", { ascending: false }).limit(12); riw = r2.data; }
+    else riw = r.data;
+  }
   const g = $("gridRiwayat");
   g.innerHTML = "";
   $("riwayatKosong").style.display = (!riw || !riw.length) ? "block" : "none";
   (riw || []).forEach(p => {
+    const sel = document.createElement("div");
+    sel.className = "sel";
     const im = document.createElement("img");
     im.src = p.photo; im.alt = "PAP dari " + p.sender; im.title = namaCantik(p.sender) + " · " + sejak(p.created_at);
-    im.onclick = () => { $("lightboxImg").src = p.photo; $("lightbox").style.display = "flex"; };
-    g.appendChild(im);
+    im.onclick = () => {
+      if (p.jenis === "video") { putarVideo(p.id); return; }
+      $("lightboxImg").src = p.photo; $("lightboxImg").style.display = "block"; $("lightboxVideo").style.display = "none";
+      $("lightbox").style.display = "flex";
+    };
+    sel.appendChild(im);
+    if (p.jenis === "video") {
+      const b = document.createElement("span");
+      b.className = "lencana"; b.textContent = "🎬";
+      sel.appendChild(b);
+    }
+    g.appendChild(sel);
   });
 }
-$("lightbox").onclick = () => $("lightbox").style.display = "none";
+
+async function putarVideo(papId) {
+  try {
+    const { data } = await sb.from("pap").select("video").eq("id", papId).limit(1);
+    if (!data || !data.length || !data[0].video) { alert("Video tidak ditemukan."); return; }
+    const v = $("lightboxVideo");
+    v.src = "data:video/mp4;base64," + data[0].video;
+    $("lightboxImg").style.display = "none";
+    v.style.display = "block";
+    $("lightbox").style.display = "flex";
+    v.play().catch(() => { });
+  } catch (e) { alert("Gagal memutar video: " + e.message); }
+}
+$("lightbox").onclick = () => {
+  $("lightbox").style.display = "none";
+  const v = $("lightboxVideo"); v.pause(); v.removeAttribute("src"); v.load();
+};
+
+// ---------- Jejak & tempat ----------
+$("btnJejak").onclick = async () => {
+  const kotak = $("isiJejak");
+  if (kotak.style.display === "block") { kotak.style.display = "none"; return; }
+  kotak.style.display = "block";
+  kotak.innerHTML = `<div class="kosong">Memuat jejak…</div>`;
+  try {
+    const awalHari = new Date(); awalHari.setHours(0, 0, 0, 0);
+    // Awal hari WIB dalam UTC: WIB = UTC+7
+    const awalUTC = new Date(awalHari.getTime() - (7 * 60 + awalHari.getTimezoneOffset()) * 60000 + awalHari.getTimezoneOffset() * 60000);
+    const { data } = await sb.from("jejak").select("*").eq("sender", pasangan)
+      .gte("created_at", new Date(Date.now() - 24 * 3600 * 1000).toISOString())
+      .order("created_at", { ascending: true }).limit(300);
+    const hariIni = kunciHariWIB(new Date());
+    const titik = (data || []).filter(t => kunciHariWIB(new Date(t.created_at)) === hariIni);
+    if (!titik.length) {
+      kotak.innerHTML = `<div class="kosong">Belum ada jejak hari ini. Jejak terekam hanya saat lokasi live ${namaCantik(pasangan)} menyala di aplikasi Android-nya.</div>`;
+      return;
+    }
+    let html = `<div class="daftar">`;
+    titik.forEach(t => {
+      let label = "di perjalanan";
+      for (const tp of tempatList) if (jarakM(t.lat, t.lng, tp.lat, tp.lng) <= (tp.radius || 200)) { label = "di " + esc(tp.nama); break; }
+      html += `<div><span class="w">${jamWIB(t.created_at)}</span> — ${label}</div>`;
+    });
+    html += `</div>`;
+    const sampel = titik.length <= 10 ? titik : titik.filter((_, i) => i % Math.ceil(titik.length / 10) === 0).slice(0, 10);
+    html += `<div style="height:8px"></div><a href="https://www.google.com/maps/dir/${sampel.map(t => t.lat + "," + t.lng).join("/")}" target="_blank" rel="noopener"><button class="sekunder">Lihat Rute di Maps</button></a>`;
+    kotak.innerHTML = html;
+  } catch (e) {
+    kotak.innerHTML = `<div class="kosong">Jejak belum bisa dimuat (pastikan SQL terbaru sudah dijalankan).</div>`;
+  }
+};
+
+function renderTempat() {
+  if (!tempatList.length) {
+    $("isiTempat").innerHTML = `<div class="kosong">Belum ada tempat ditandai — tandai rumah / kantor / kampus.</div>`;
+    return;
+  }
+  $("isiTempat").innerHTML = tempatList.map(t =>
+    `<div class="daftar" style="display:flex;justify-content:space-between;align-items:center">
+       <span>🏠 ${esc(t.nama)} <span style="color:#64748B">· radius ${t.radius || 200} m</span></span>
+       <button class="link-kecil" data-hapus-tempat="${t.id}">Hapus</button>
+     </div>`).join("");
+  document.querySelectorAll("[data-hapus-tempat]").forEach(b => {
+    b.onclick = async () => {
+      if (!confirm("Hapus tempat ini untuk berdua?")) return;
+      await sb.from("tempat").delete().eq("id", b.getAttribute("data-hapus-tempat"));
+      muatSemua();
+    };
+  });
+}
+$("btnTandai").onclick = async () => {
+  const nama = prompt("Nama tempat ini (mis. Rumah Killa / Kantor / Kampus):");
+  if (!nama || !nama.trim()) return;
+  const lok = await ambilLokasi();
+  if (!lok) { alert("Lokasi belum terbaca — izinkan lokasi lalu coba lagi."); return; }
+  const { error } = await sb.from("tempat").insert({ nama: nama.trim(), lat: lok.lat, lng: lok.lng, radius: 200, dibuat_oleh: saya });
+  if (error) { tandaiSqlBelumAda(error); alert("Gagal tandai tempat: " + error.message); return; }
+  alert("Tempat \"" + nama.trim() + "\" ditandai 🏠");
+  muatSemua();
+};
+
+// ---------- Jurnal ----------
+$("btnJurnal").onclick = async () => {
+  $("isiJurnal").innerHTML = `<div class="kosong">Memuat jurnal…</div>`;
+  try {
+    const { data, error } = await sb.from("jurnal").select("*").order("created_at", { ascending: false }).limit(40);
+    if (error) throw error;
+    if (!data.length) { $("isiJurnal").innerHTML = `<div class="kosong">Jurnal masih kosong.</div>`; return; }
+    $("isiJurnal").innerHTML = `<div class="daftar">` + data.map(j =>
+      `<div><span class="w">${tglWIB(j.created_at)} ${jamWIB(j.created_at)}</span> — ${namaCantik(j.siapa)} ${esc(j.peristiwa)}</div>`).join("") + `</div>` +
+      `<p class="meta">Jurnal ini terlihat oleh berdua dan tidak bisa dihapus dari aplikasi.</p>`;
+  } catch (e) {
+    tandaiSqlBelumAda(e);
+    $("isiJurnal").innerHTML = `<div class="kosong">Jurnal belum bisa dimuat (pastikan SQL v6 sudah dijalankan).</div>`;
+  }
+};
+
+// ---------- Sinyal ----------
+async function kirimSinyal(kind, isi) {
+  try {
+    const { error } = await sb.from("sinyal").insert({ sender: saya, kind, isi: isi || null });
+    if (error) throw error;
+    $("statusSinyal").textContent = "Terkirim ke " + namaCantik(pasangan) + " 💌 (muncul di HP dia saat aplikasi tersinkron)";
+    if (kind === "dering") tulisJurnal("menderingkan HP " + namaCantik(pasangan) + " 📞");
+    if (kind === "minta_lokasi") tulisJurnal("meminta lokasi " + namaCantik(pasangan));
+  } catch (e) {
+    tandaiSqlBelumAda(e);
+    $("statusSinyal").textContent = "Gagal kirim sinyal: " + e.message;
+  }
+}
+$("sigHati").onclick = () => kirimSinyal("hati");
+$("sigCium").onclick = () => kirimSinyal("cium");
+$("sigApi").onclick = () => kirimSinyal("api");
+$("sigPesan").onclick = () => { const t = prompt("Pesan cepat untuk " + namaCantik(pasangan) + ":"); if (t && t.trim()) kirimSinyal("pesan", t.trim()); };
+$("btnDering").onclick = () => { if (confirm("Deringkan HP " + namaCantik(pasangan) + " sekarang? Di HP Android-nya akan bunyi keras layar-penuh.")) kirimSinyal("dering"); };
+$("btnMintaLokasi").onclick = () => kirimSinyal("minta_lokasi");
+
 setInterval(() => { if (saya && tabelOk && !document.hidden) muatSemua(); }, 20000);
 
 // ---- Kirim PAP ----
-$("btnAmbil").onclick = () => $("fileFoto").click();
-$("fileFoto").onchange = e => {
-  const f = e.target.files[0]; if (!f) return;
+$("btnJepret").onclick = () => $("fileJepret").click();
+$("btnGaleri").onclick = () => $("fileGaleri").click();
+$("btnVideo").onclick = () => $("fileVideo").click();
+function prosesFoto(file, sumber) {
+  sumberKirim = sumber;
+  videoKirim = null;
+  $("previewVideo").style.display = "none";
   const rd = new FileReader();
   rd.onload = () => {
     const img = new Image();
@@ -254,10 +586,43 @@ $("fileFoto").onchange = e => {
       fotoData = cv.toDataURL("image/jpeg", 0.82);
       $("preview").src = fotoData; $("preview").style.display = "block";
       $("btnKirim").style.display = "block";
+      $("statusKirim").textContent = sumber === "langsung" ? "Foto jepretan langsung siap — berstempel ✅ PAP Langsung." : "Foto galeri siap — akan berlabel 🖼️ dari galeri.";
     };
     img.src = rd.result;
   };
-  rd.readAsDataURL(f);
+  rd.readAsDataURL(file);
+}
+$("fileJepret").onchange = e => { if (e.target.files[0]) prosesFoto(e.target.files[0], "langsung"); };
+$("fileGaleri").onchange = e => { if (e.target.files[0]) prosesFoto(e.target.files[0], "galeri"); };
+$("fileVideo").onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  if (f.size > 4_500_000) { $("statusKirim").textContent = "Video kebesaran (" + Math.round(f.size / 1024) + " KB) — rekam ulang lebih pendek (±10 detik)."; return; }
+  $("statusKirim").textContent = "Menyiapkan video…";
+  const url = URL.createObjectURL(f);
+  const v = document.createElement("video");
+  v.muted = true; v.playsInline = true; v.src = url;
+  v.addEventListener("loadeddata", () => { try { v.currentTime = Math.min(0.4, (v.duration || 1) / 2); } catch (err) { } });
+  v.addEventListener("seeked", () => {
+    try {
+      const maks = 1080, skala = Math.min(1, maks / Math.max(v.videoWidth, v.videoHeight));
+      const cv = document.createElement("canvas");
+      cv.width = Math.round(v.videoWidth * skala); cv.height = Math.round(v.videoHeight * skala);
+      cv.getContext("2d").drawImage(v, 0, 0, cv.width, cv.height);
+      const poster = cv.toDataURL("image/jpeg", 0.82);
+      const rd = new FileReader();
+      rd.onload = () => {
+        videoKirim = { b64: String(rd.result).split(",")[1], poster };
+        fotoData = null;
+        sumberKirim = "langsung";
+        $("preview").style.display = "none";
+        const pv = $("previewVideo");
+        pv.src = url; pv.style.display = "block";
+        $("btnKirim").style.display = "block";
+        $("statusKirim").textContent = "Video siap — tulis caption lalu KIRIM.";
+      };
+      rd.readAsDataURL(f);
+    } catch (err) { $("statusKirim").textContent = "Gagal menyiapkan video: " + err.message; }
+  }, { once: true });
 };
 function ambilLokasi() {
   return new Promise(res => {
@@ -267,25 +632,52 @@ function ambilLokasi() {
       () => res(null), { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
   });
 }
+async function bateraiWeb() {
+  try {
+    if (navigator.getBattery) { const b = await navigator.getBattery(); return Math.round(b.level * 100); }
+  } catch (e) { }
+  return null;
+}
 $("btnKirim").onclick = async () => {
-  if (!fotoData) return;
+  if (!fotoData && !videoKirim) return;
   $("btnKirim").disabled = true;
   $("statusKirim").textContent = "Mengambil lokasi & mengirim…";
   const lok = await ambilLokasi();
-  const { error } = await sb.from("pap").insert({
-    sender: saya, photo: fotoData,
-    caption: $("caption").value.trim() || null,
-    lat: lok ? lok.lat : null, lng: lok ? lok.lng : null });
+  const cap = $("caption").value.trim() || null;
+  let error = null;
+  if (videoKirim) {
+    const r = await sb.from("pap").insert({
+      sender: saya, photo: videoKirim.poster, jenis: "video", video: videoKirim.b64, sumber: "langsung",
+      caption: cap, lat: lok ? lok.lat : null, lng: lok ? lok.lng : null });
+    error = r.error;
+    if (!error) tulisJurnal("mengirim Video PAP 🎬 (direkam langsung)");
+  } else {
+    const r = await sb.from("pap").insert({
+      sender: saya, photo: fotoData, jenis: "foto", sumber: sumberKirim,
+      caption: cap, lat: lok ? lok.lat : null, lng: lok ? lok.lng : null });
+    error = r.error;
+    if (error && /sumber|jenis|column/i.test(error.message || "")) {
+      const r2 = await sb.from("pap").insert({ sender: saya, photo: fotoData, caption: cap, lat: lok ? lok.lat : null, lng: lok ? lok.lng : null });
+      error = r2.error;
+    }
+    if (!error) tulisJurnal("mengirim PAP foto" + (sumberKirim === "langsung" ? " (PAP Langsung 📸)" : " (dari galeri 🖼️)"));
+  }
   if (error) {
     tandaiSqlBelumAda(error);
     $("statusKirim").textContent = "Gagal kirim: " + error.message;
     $("btnKirim").disabled = false; return;
   }
-  if (lok) await sb.from("lokasi").upsert({ sender: saya, lat: lok.lat, lng: lok.lng, updated_at: new Date().toISOString() });
+  if (lok) {
+    const bat = await bateraiWeb();
+    const up = { sender: saya, lat: lok.lat, lng: lok.lng, updated_at: new Date().toISOString() };
+    if (bat !== null) up.baterai = bat;
+    await sb.from("lokasi").upsert(up);
+  }
   $("statusKirim").textContent = "Terkirim ke " + namaCantik(pasangan) + " 💌" + (lok ? " (dengan lokasi)" : " (tanpa lokasi — izin lokasi ditolak/nonaktif)");
-  $("caption").value = ""; fotoData = null;
-  $("preview").style.display = "none"; $("btnKirim").style.display = "none";
-  $("btnKirim").disabled = false; $("fileFoto").value = "";
+  $("caption").value = ""; fotoData = null; videoKirim = null;
+  $("preview").style.display = "none"; $("previewVideo").style.display = "none"; $("btnKirim").style.display = "none";
+  $("btnKirim").disabled = false;
+  $("fileJepret").value = ""; $("fileGaleri").value = ""; $("fileVideo").value = "";
   muatSemua();
 };
 
@@ -293,16 +685,25 @@ $("btnKirim").onclick = async () => {
 async function perbaruiLokasiku() {
   const lok = await ambilLokasi();
   if (!lok) { $("statusLokasi").textContent = "Lokasi belum bisa diambil — pastikan GPS & izin lokasi aktif."; return; }
-  const { error } = await sb.from("lokasi").upsert({ sender: saya, lat: lok.lat, lng: lok.lng, updated_at: new Date().toISOString() });
+  const bat = await bateraiWeb();
+  const up = { sender: saya, lat: lok.lat, lng: lok.lng, updated_at: new Date().toISOString() };
+  if (bat !== null) up.baterai = bat;
+  const { error } = await sb.from("lokasi").upsert(up);
+  if (error && /baterai|column/i.test(error.message || "")) {
+    delete up.baterai;
+    await sb.from("lokasi").upsert(up);
+  }
   if (!error) $("statusLokasi").textContent = "Lokasimu terkirim · diperbarui " + new Date().toLocaleTimeString("id-ID");
 }
 $("toggleLokasi").onchange = e => {
   if (e.target.checked) {
     perbaruiLokasiku();
     timerLive = setInterval(perbaruiLokasiku, 30000);
+    tulisJurnal("menyalakan lokasi live 📡 (web)");
   } else {
     clearInterval(timerLive); timerLive = null;
     $("statusLokasi").textContent = "Berbagi lokasi dimatikan.";
+    tulisJurnal("mematikan lokasi live 📴 (web)");
   }
 };
 
