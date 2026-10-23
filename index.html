@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PAP Berdua</title>
+<meta name="theme-color" content="#0F172A">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PAP Berdua">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #0F172A; color: #E2E8F0; min-height: 100vh; }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 16px 14px 40px; }
+  h1 { font-size: 22px; text-align: center; margin: 8px 0 2px; }
+  .sub { text-align: center; color: #94A3B8; font-size: 13px; margin-bottom: 16px; }
+  .kartu { background: #1E293B; border: 1px solid #334155; border-radius: 16px; padding: 14px; margin-bottom: 14px; }
+  .kartu h2 { font-size: 15px; color: #7DD3FC; margin-bottom: 10px; }
+  .foto-besar { width: 100%; border-radius: 12px; display: block; background: #0B1220; }
+  .meta { color: #94A3B8; font-size: 13px; margin-top: 8px; line-height: 1.55; }
+  .meta a { color: #7DD3FC; }
+  .caption { font-size: 15px; margin-top: 6px; }
+  button { background: #EC4899; color: #fff; border: 0; border-radius: 12px; padding: 13px 16px; font-size: 16px; font-weight: 700; cursor: pointer; width: 100%; }
+  button.sekunder { background: #334155; font-weight: 600; }
+  button:disabled { opacity: .5; }
+  input[type=email], input[type=password], input[type=text] { width: 100%; background: #0B1220; border: 1px solid #334155; border-radius: 10px; color: #fff; padding: 12px; font-size: 15px; margin-bottom: 10px; }
+  .pilih { display: flex; gap: 10px; }
+  .pilih button { flex: 1; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .grid img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; cursor: pointer; background: #0B1220; }
+  .switchbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .switchbar span { font-size: 14px; line-height: 1.45; }
+  .toggle { position: relative; width: 52px; height: 30px; flex: none; }
+  .toggle input { opacity: 0; width: 100%; height: 100%; position: absolute; margin: 0; cursor: pointer; }
+  .jejak { position: absolute; inset: 0; background: #475569; border-radius: 999px; transition: .2s; }
+  .jejak:before { content: ""; position: absolute; width: 24px; height: 24px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; }
+  .toggle input:checked + .jejak { background: #22C55E; }
+  .toggle input:checked + .jejak:before { transform: translateX(22px); }
+  .banner { background: #422006; border: 1px solid #B45309; color: #FDE68A; border-radius: 12px; padding: 12px; font-size: 14px; line-height: 1.6; margin-bottom: 14px; display: none; }
+  .kosong { text-align: center; color: #64748B; padding: 26px 10px; font-size: 14px; line-height: 1.6; }
+  #lightbox { position: fixed; inset: 0; background: rgba(2,6,23,.94); display: none; align-items: center; justify-content: center; z-index: 50; padding: 14px; }
+  #lightbox img { max-width: 100%; max-height: 88vh; border-radius: 12px; }
+  .atas { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .link-kecil { color: #7DD3FC; font-size: 13px; cursor: pointer; background: none; width: auto; padding: 4px; font-weight: 600; }
+  #preview { width: 100%; border-radius: 12px; display: none; margin-bottom: 10px; }
+  .status { text-align: center; font-size: 13px; color: #A7F3D0; min-height: 18px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="atas">
+    <span style="font-size:13px;color:#64748B" id="siapaLabel"></span>
+    <button class="link-kecil" id="btnKeluar" style="display:none">Keluar</button>
+  </div>
+  <h1>💌 PAP Berdua</h1>
+  <p class="sub">Kirim foto ke pasangan, langsung muncul di HP dia — lengkap dengan lokasimu saat mengirim.</p>
+
+  <div class="banner" id="bannerSql">⚠️ Fitur PAP belum aktif di database. Jalankan dulu SQL <b>pap-berdua.sql</b> di Supabase (SQL Editor → tempel → Run), lalu muat ulang halaman ini.</div>
+
+  <!-- LOGIN -->
+  <div class="kartu" id="layarLogin" style="display:none">
+    <h2>Masuk dengan akun bersama</h2>
+    <input type="email" id="email" placeholder="Email" autocomplete="username">
+    <input type="password" id="password" placeholder="Password" autocomplete="current-password">
+    <button id="btnLogin">Masuk</button>
+    <p class="meta">Pakai email + password yang sama dengan web Tentang Kami.</p>
+    <div class="status" id="statusLogin"></div>
+  </div>
+
+  <!-- PILIH PROFIL -->
+  <div class="kartu" id="layarPilih" style="display:none">
+    <h2>HP ini dipakai siapa?</h2>
+    <div class="pilih">
+      <button id="pilihBobby">🤵 Bobby</button>
+      <button id="pilihKilla" style="background:#8B5CF6">👰 Killa</button>
+    </div>
+    <p class="meta">Dipilih sekali saja per HP — biar aplikasi tahu foto yang datang itu dari pasanganmu, bukan darimu.</p>
+  </div>
+
+  <!-- UTAMA -->
+  <div id="layarUtama" style="display:none">
+    <div class="kartu">
+      <h2 id="judulTerbaru">PAP terbaru dari pasanganmu</h2>
+      <div id="isiTerbaru"><div class="kosong">Memuat…</div></div>
+    </div>
+
+    <div class="kartu">
+      <h2>📍 Lokasi pasanganmu</h2>
+      <div id="isiLokasi"><div class="kosong">Memuat…</div></div>
+    </div>
+
+    <div class="kartu">
+      <h2>📸 Kirim PAP sekarang</h2>
+      <img id="preview" alt="Pratinjau foto">
+      <input type="text" id="caption" placeholder="Tulis caption (boleh kosong)">
+      <button id="btnAmbil">Ambil / Pilih Foto</button>
+      <input type="file" id="fileFoto" accept="image/*" capture="environment" style="display:none">
+      <button id="btnKirim" style="display:none;margin-top:10px;background:#22C55E">Kirim ke Pasangan 💌</button>
+      <p class="meta">Saat kamu menekan Kirim, lokasimu saat itu ikut terkirim (browser akan minta izin lokasi — pilih Izinkan). Foto TIDAK pernah diambil otomatis; hanya foto yang kamu pilih & kirim sendiri yang terkirim.</p>
+      <div class="status" id="statusKirim"></div>
+    </div>
+
+    <div class="kartu">
+      <div class="switchbar">
+        <span><b>Bagikan lokasiku (live)</b><br><span style="color:#94A3B8">Selama aplikasi ini terbuka, posisimu diperbarui tiap 30 detik agar pasangan bisa melihatmu. Matikan kapan saja.</span></span>
+        <label class="toggle"><input type="checkbox" id="toggleLokasi"><span class="jejak"></span></label>
+      </div>
+      <div class="status" id="statusLokasi"></div>
+    </div>
+
+    <div class="kartu">
+      <h2>🖼️ Riwayat PAP</h2>
+      <div class="grid" id="gridRiwayat"></div>
+      <div class="kosong" id="riwayatKosong" style="display:none">Belum ada PAP terkirim.</div>
+    </div>
+
+    <button class="sekunder" id="btnGantiProfil">Ganti profil HP ini</button>
+  </div>
+</div>
+
+<div id="lightbox"><img id="lightboxImg" alt="Foto besar"></div>
+
+<script>
+const SB_URL = "https://rwgwnrczdaucamubzhny.supabase.co";
+const SB_KEY = "sb_publishable_mmAF6_nlJF50TcVoAq624A_ujBKI_qi";
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+const $ = id => document.getElementById(id);
+let saya = localStorage.getItem("pap_siapa") || "";
+let pasangan = "";
+let fotoData = null;
+let timerLive = null;
+let tabelOk = true;
+
+function namaCantik(x) { return x === "bobby" ? "Bobby" : "Killa"; }
+function sejak(iso) {
+  const d = new Date(iso), s = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (s < 60) return "baru saja";
+  if (s < 3600) return Math.floor(s / 60) + " menit lalu";
+  if (s < 86400) return Math.floor(s / 3600) + " jam lalu";
+  return Math.floor(s / 86400) + " hari lalu";
+}
+function tautanMaps(lat, lng) { return "https://www.google.com/maps?q=" + lat + "," + lng; }
+
+async function cekSesi() {
+  const { data } = await sb.auth.getSession();
+  if (!data.session) { tampil("login"); return; }
+  $("btnKeluar").style.display = "block";
+  if (!saya) { tampil("pilih"); return; }
+  masukUtama();
+}
+function tampil(x) {
+  $("layarLogin").style.display = x === "login" ? "block" : "none";
+  $("layarPilih").style.display = x === "pilih" ? "block" : "none";
+  $("layarUtama").style.display = x === "utama" ? "block" : "none";
+}
+function masukUtama() {
+  pasangan = saya === "bobby" ? "killa" : "bobby";
+  $("siapaLabel").textContent = "HP ini: " + namaCantik(saya);
+  $("judulTerbaru").textContent = "PAP terbaru dari " + namaCantik(pasangan);
+  tampil("utama");
+  muatSemua();
+}
+
+$("btnLogin").onclick = async () => {
+  $("statusLogin").textContent = "Memeriksa…";
+  const { error } = await sb.auth.signInWithPassword({
+    email: $("email").value.trim(), password: $("password").value });
+  if (error) { $("statusLogin").textContent = "Gagal masuk: " + error.message; return; }
+  $("statusLogin").textContent = "";
+  cekSesi();
+};
+$("btnKeluar").onclick = async () => { await sb.auth.signOut(); location.reload(); };
+$("pilihBobby").onclick = () => { saya = "bobby"; localStorage.setItem("pap_siapa", saya); masukUtama(); };
+$("pilihKilla").onclick = () => { saya = "killa"; localStorage.setItem("pap_siapa", saya); masukUtama(); };
+$("btnGantiProfil").onclick = () => { localStorage.removeItem("pap_siapa"); saya = ""; tampil("pilih"); };
+
+function tandaiSqlBelumAda(err) {
+  if (err && /does not exist|relation .* not|schema cache/i.test(err.message || "")) {
+    tabelOk = false; $("bannerSql").style.display = "block"; return true;
+  }
+  return false;
+}
+
+async function muatSemua() {
+  // PAP terbaru dari pasangan
+  const { data: ter, error: e1 } = await sb.from("pap").select("*")
+    .eq("sender", pasangan).order("created_at", { ascending: false }).limit(1);
+  if (tandaiSqlBelumAda(e1)) return;
+  if (ter && ter.length) {
+    const p = ter[0];
+    let loc = "";
+    if (p.lat && p.lng) loc = `<br>📍 Lokasi saat kirim: <a href="${tautanMaps(p.lat, p.lng)}" target="_blank" rel="noopener">Buka di Maps</a>`;
+    $("isiTerbaru").innerHTML =
+      `<img class="foto-besar" src="${p.photo}" alt="PAP terbaru">
+       ${p.caption ? `<div class="caption">“${p.caption.replace(/</g, "&lt;")}”</div>` : ""}
+       <div class="meta">Dari ${namaCantik(p.sender)} · ${sejak(p.created_at)} · ${new Date(p.created_at).toLocaleString("id-ID")}${loc}</div>`;
+  } else {
+    $("isiTerbaru").innerHTML = `<div class="kosong">Belum ada PAP dari ${namaCantik(pasangan)}.<br>Minta dia kirim yang pertama ya 💌</div>`;
+  }
+  // Lokasi terakhir pasangan
+  const { data: lok, error: e2 } = await sb.from("lokasi").select("*").eq("sender", pasangan).limit(1);
+  if (!tandaiSqlBelumAda(e2)) {
+    if (lok && lok.length) {
+      const l = lok[0];
+      $("isiLokasi").innerHTML =
+        `<div class="meta" style="margin-top:0">Terakhir diperbarui ${sejak(l.updated_at)} (${new Date(l.updated_at).toLocaleString("id-ID")})<br>
+         📍 <a href="${tautanMaps(l.lat, l.lng)}" target="_blank" rel="noopener">Lihat posisi ${namaCantik(pasangan)} di Maps</a></div>`;
+    } else {
+      $("isiLokasi").innerHTML = `<div class="kosong">${namaCantik(pasangan)} belum membagikan lokasinya.</div>`;
+    }
+  }
+  // Riwayat
+  const { data: riw } = await sb.from("pap").select("id, sender, photo, created_at")
+    .order("created_at", { ascending: false }).limit(12);
+  const g = $("gridRiwayat");
+  g.innerHTML = "";
+  $("riwayatKosong").style.display = (!riw || !riw.length) ? "block" : "none";
+  (riw || []).forEach(p => {
+    const im = document.createElement("img");
+    im.src = p.photo; im.alt = "PAP dari " + p.sender; im.title = namaCantik(p.sender) + " · " + sejak(p.created_at);
+    im.onclick = () => { $("lightboxImg").src = p.photo; $("lightbox").style.display = "flex"; };
+    g.appendChild(im);
+  });
+}
+$("lightbox").onclick = () => $("lightbox").style.display = "none";
+setInterval(() => { if (saya && tabelOk && !document.hidden) muatSemua(); }, 20000);
+
+// ---- Kirim PAP ----
+$("btnAmbil").onclick = () => $("fileFoto").click();
+$("fileFoto").onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const maks = 1080, skala = Math.min(1, maks / Math.max(img.width, img.height));
+      const cv = document.createElement("canvas");
+      cv.width = Math.round(img.width * skala); cv.height = Math.round(img.height * skala);
+      cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+      fotoData = cv.toDataURL("image/jpeg", 0.82);
+      $("preview").src = fotoData; $("preview").style.display = "block";
+      $("btnKirim").style.display = "block";
+    };
+    img.src = rd.result;
+  };
+  rd.readAsDataURL(f);
+};
+function ambilLokasi() {
+  return new Promise(res => {
+    if (!navigator.geolocation) return res(null);
+    navigator.geolocation.getCurrentPosition(
+      pos => res({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => res(null), { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
+  });
+}
+$("btnKirim").onclick = async () => {
+  if (!fotoData) return;
+  $("btnKirim").disabled = true;
+  $("statusKirim").textContent = "Mengambil lokasi & mengirim…";
+  const lok = await ambilLokasi();
+  const { error } = await sb.from("pap").insert({
+    sender: saya, photo: fotoData,
+    caption: $("caption").value.trim() || null,
+    lat: lok ? lok.lat : null, lng: lok ? lok.lng : null });
+  if (error) {
+    tandaiSqlBelumAda(error);
+    $("statusKirim").textContent = "Gagal kirim: " + error.message;
+    $("btnKirim").disabled = false; return;
+  }
+  if (lok) await sb.from("lokasi").upsert({ sender: saya, lat: lok.lat, lng: lok.lng, updated_at: new Date().toISOString() });
+  $("statusKirim").textContent = "Terkirim ke " + namaCantik(pasangan) + " 💌" + (lok ? " (dengan lokasi)" : " (tanpa lokasi — izin lokasi ditolak/nonaktif)");
+  $("caption").value = ""; fotoData = null;
+  $("preview").style.display = "none"; $("btnKirim").style.display = "none";
+  $("btnKirim").disabled = false; $("fileFoto").value = "";
+  muatSemua();
+};
+
+// ---- Bagikan lokasi live (saat aplikasi terbuka) ----
+async function perbaruiLokasiku() {
+  const lok = await ambilLokasi();
+  if (!lok) { $("statusLokasi").textContent = "Lokasi belum bisa diambil — pastikan GPS & izin lokasi aktif."; return; }
+  const { error } = await sb.from("lokasi").upsert({ sender: saya, lat: lok.lat, lng: lok.lng, updated_at: new Date().toISOString() });
+  if (!error) $("statusLokasi").textContent = "Lokasimu terkirim · diperbarui " + new Date().toLocaleTimeString("id-ID");
+}
+$("toggleLokasi").onchange = e => {
+  if (e.target.checked) {
+    perbaruiLokasiku();
+    timerLive = setInterval(perbaruiLokasiku, 30000);
+  } else {
+    clearInterval(timerLive); timerLive = null;
+    $("statusLokasi").textContent = "Berbagi lokasi dimatikan.";
+  }
+};
+
+cekSesi();
+</script>
+</body>
+</html>
