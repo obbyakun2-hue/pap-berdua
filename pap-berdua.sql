@@ -115,3 +115,12 @@ end $$;
 
 -- v8: Jejak Live Berdua — label jalan/tempat pada tiap titik jejak
 alter table public.jejak add column if not exists label text;
+
+-- v9: realtime lokasi (Live Tracking GPS — posisi pasangan bergerak langsung)
+do $$
+begin
+  begin
+    alter publication supabase_realtime add table public.lokasi;
+  exception when duplicate_object then null;
+  end;
+end $$;

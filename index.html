@@ -269,6 +269,8 @@ function masukUtama() {
 // jadi tampilan berubah ±1-3 detik (selama aplikasi terbuka). Butuh SQL v7
 // (publication supabase_realtime). Interval 20 detik tetap jadi cadangan.
 let kanalRealtime = null, kanalUntuk = "";
+let muatTerakhir = 0;
+function muatDibatasi() { const k = Date.now(); if (k - muatTerakhir < 8000) return; muatTerakhir = k; muatSemua(); }
 function pasangRealtime() {
   try {
     if (kanalRealtime && kanalUntuk === pasangan) return;
@@ -277,6 +279,7 @@ function pasangRealtime() {
     kanalRealtime = sb.channel("berdua-live-" + pasangan)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "pap", filter: "sender=eq." + pasangan }, () => muatSemua())
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "sinyal", filter: "sender=eq." + pasangan }, () => muatSemua())
+      .on("postgres_changes", { event: "*", schema: "public", table: "lokasi", filter: "sender=eq." + pasangan }, () => muatDibatasi())
       .subscribe();
   } catch (e) { /* diamkan: interval tetap berjalan */ }
 }
@@ -724,6 +727,10 @@ $("btnKirim").onclick = async () => {
 async function perbaruiLokasiku() {
   const lok = await ambilLokasi();
   if (!lok) { $("statusLokasi").textContent = "Lokasi belum bisa diambil — pastikan GPS & izin lokasi aktif."; return; }
+  await unggahLokasiWeb(lok.lat, lok.lng);
+}
+async function unggahLokasiWeb(la, ln) {
+  const lok = { lat: la, lng: ln };
   const bat = await bateraiWeb();
   const up = { sender: saya, lat: lok.lat, lng: lok.lng, updated_at: new Date().toISOString() };
   if (bat !== null) up.baterai = bat;
@@ -761,13 +768,27 @@ async function perbaruiLokasiku() {
     }
   } catch (e) { }
 }
+let idPantau = null, unggahWatchTerakhir = 0, latWatchTerakhir = null, lngWatchTerakhir = null;
 $("toggleLokasi").onchange = e => {
   if (e.target.checked) {
     perbaruiLokasiku();
     timerLive = setInterval(perbaruiLokasiku, 30000);
+    // Live Tracking web: pantau gerak terus selama halaman terbuka (unggah >=20 m atau tiap 10 dtk)
+    try {
+      if (navigator.geolocation) {
+        idPantau = navigator.geolocation.watchPosition(pos => {
+          const la = pos.coords.latitude, ln = pos.coords.longitude, kini = Date.now();
+          const jauh = latWatchTerakhir === null || jarakM(latWatchTerakhir, lngWatchTerakhir, la, ln) >= 20;
+          if (!jauh && kini - unggahWatchTerakhir < 10000) return;
+          latWatchTerakhir = la; lngWatchTerakhir = ln; unggahWatchTerakhir = kini;
+          unggahLokasiWeb(la, ln);
+        }, () => {}, { enableHighAccuracy: true, maximumAge: 1000 });
+      }
+    } catch (err) { }
     tulisJurnal("menyalakan lokasi live 📡 (web)");
   } else {
     clearInterval(timerLive); timerLive = null;
+    if (idPantau !== null && navigator.geolocation) { navigator.geolocation.clearWatch(idPantau); idPantau = null; }
     $("statusLokasi").textContent = "Berbagi lokasi dimatikan.";
     tulisJurnal("mematikan lokasi live 📴 (web)");
   }
