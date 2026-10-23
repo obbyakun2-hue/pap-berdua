@@ -125,7 +125,6 @@
       <div style="height:10px"></div>
       <div class="baris">
         <button class="sekunder" id="btnJejak">🗺️ Jejak Hari Ini</button>
-        <button class="sekunder" id="btnMintaLokasi" style="background:#7C3AED">📍 Minta Lokasinya</button>
       </div>
       <div id="isiJejak" style="display:none;margin-top:10px"></div>
     </div>
@@ -580,7 +579,6 @@ $("sigCium").onclick = () => kirimSinyal("cium");
 $("sigApi").onclick = () => kirimSinyal("api");
 $("sigPesan").onclick = () => { const t = prompt("Pesan cepat untuk " + namaCantik(pasangan) + ":"); if (t && t.trim()) kirimSinyal("pesan", t.trim()); };
 $("btnDering").onclick = () => { if (confirm("Deringkan HP " + namaCantik(pasangan) + " sekarang? Di HP Android-nya akan bunyi keras layar-penuh.")) kirimSinyal("dering"); };
-$("btnMintaLokasi").onclick = () => kirimSinyal("minta_lokasi");
 
 setInterval(() => { if (saya && tabelOk && !document.hidden) muatSemua(); }, 20000);
 
