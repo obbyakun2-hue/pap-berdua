@@ -75,3 +75,8 @@ alter table public.jejak enable row level security;
 drop policy if exists "akun login akses penuh jejak" on public.jejak;
 create policy "akun login akses penuh jejak" on public.jejak
   for all to authenticated using (true) with check (true);
+
+-- Video PAP (aplikasi v1.9+): jenis='foto'|'video', video=base64 MP4 (photo tetap cover/foto), efek=nama filter
+alter table public.pap add column if not exists jenis text not null default 'foto';
+alter table public.pap add column if not exists video text;
+alter table public.pap add column if not exists efek text;
