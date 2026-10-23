@@ -43,3 +43,6 @@ alter table public.sinyal enable row level security;
 drop policy if exists "akun login akses penuh sinyal" on public.sinyal;
 create policy "akun login akses penuh sinyal" on public.sinyal
   for all to authenticated using (true) with check (true);
+
+-- Kolom baterai (%) di tabel lokasi — fitur "baterai & terakhir aktif pasangan" (aplikasi v1.7+)
+alter table public.lokasi add column if not exists baterai int;
