@@ -112,3 +112,6 @@ begin
   exception when duplicate_object then null;
   end;
 end $$;
+
+-- v8: Jejak Live Berdua — label jalan/tempat pada tiap titik jejak
+alter table public.jejak add column if not exists label text;

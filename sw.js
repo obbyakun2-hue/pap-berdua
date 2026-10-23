@@ -1,6 +1,6 @@
 // Service worker PAP Berdua — syarat agar bisa di-install di Android (Chrome)
 // & membantu aplikasi terbuka cepat. Data Supabase selalu diambil dari jaringan.
-const CACHE = "pap-berdua-v4";
+const CACHE = "pap-berdua-v5";
 const SHELL = [
   "./",
   "./index.html",

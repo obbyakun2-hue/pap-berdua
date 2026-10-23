@@ -487,29 +487,53 @@ $("btnJejak").onclick = async () => {
   const kotak = $("isiJejak");
   if (kotak.style.display === "block") { kotak.style.display = "none"; return; }
   kotak.style.display = "block";
-  kotak.innerHTML = `<div class="kosong">Memuat jejak…</div>`;
+  kotak.innerHTML = `<div class="kosong">Memuat jejak live berdua…</div>`;
   try {
-    const awalHari = new Date(); awalHari.setHours(0, 0, 0, 0);
-    // Awal hari WIB dalam UTC: WIB = UTC+7
-    const awalUTC = new Date(awalHari.getTime() - (7 * 60 + awalHari.getTimezoneOffset()) * 60000 + awalHari.getTimezoneOffset() * 60000);
-    const { data } = await sb.from("jejak").select("*").eq("sender", pasangan)
-      .gte("created_at", new Date(Date.now() - 24 * 3600 * 1000).toISOString())
-      .order("created_at", { ascending: true }).limit(300);
     const hariIni = kunciHariWIB(new Date());
+    const { data } = await sb.from("jejak").select("*")
+      .gte("created_at", new Date(Date.now() - 24 * 3600 * 1000).toISOString())
+      .order("created_at", { ascending: true }).limit(600);
     const titik = (data || []).filter(t => kunciHariWIB(new Date(t.created_at)) === hariIni);
     if (!titik.length) {
-      kotak.innerHTML = `<div class="kosong">Belum ada jejak hari ini. Jejak terekam hanya saat lokasi live ${namaCantik(pasangan)} menyala di aplikasi Android-nya.</div>`;
+      kotak.innerHTML = `<div class="kosong">Belum ada jejak hari ini. Jejak terekam hanya saat lokasi live menyala di HP masing-masing.</div>`;
       return;
     }
-    let html = `<div class="daftar">`;
-    titik.forEach(t => {
-      let label = "di perjalanan";
-      for (const tp of tempatList) if (jarakM(t.lat, t.lng, tp.lat, tp.lng) <= (tp.radius || 200)) { label = "di " + esc(tp.nama); break; }
-      html += `<div><span class="w">${jamWIB(t.created_at)}</span> — ${label}</div>`;
-    });
-    html += `</div>`;
-    const sampel = titik.length <= 10 ? titik : titik.filter((_, i) => i % Math.ceil(titik.length / 10) === 0).slice(0, 10);
-    html += `<div style="height:8px"></div><a href="https://www.google.com/maps/dir/${sampel.map(t => t.lat + "," + t.lng).join("/")}" target="_blank" rel="noopener"><button class="sekunder">Lihat Rute di Maps</button></a>`;
+    const peristiwaDari = (nama, dataOrang) => {
+      const out = [];
+      let tempatTerakhir = null, labelTerakhir = null;
+      for (const t of dataOrang) {
+        let jenis = null, isi = null;
+        if (t.label && (t.label.startsWith("T:") || t.label.startsWith("J:"))) { jenis = t.label.charAt(0); isi = t.label.slice(2); }
+        else {
+          for (const tp of tempatList) if (jarakM(t.lat, t.lng, tp.lat, tp.lng) <= (tp.radius || 200)) { jenis = "T"; isi = tp.nama; break; }
+          if (!jenis) { jenis = "J"; isi = "Perjalanan"; }
+        }
+        const jam = jamWIB(t.created_at);
+        if (jenis === "T") {
+          if (isi !== tempatTerakhir) out.push({ w: t.created_at, teks: jam + " — 📍 " + nama + " tiba di " + esc(isi) });
+          tempatTerakhir = isi; labelTerakhir = "T:" + isi;
+        } else {
+          const kunci = "J:" + isi;
+          if (kunci !== labelTerakhir) out.push({ w: t.created_at, teks: tempatTerakhir ? jam + " — 🚶 " + nama + " berangkat dari " + esc(tempatTerakhir) + " • " + esc(isi) : jam + " — 🚶 " + nama + " di " + esc(isi) });
+          labelTerakhir = kunci; tempatTerakhir = null;
+        }
+      }
+      if (dataOrang.length && labelTerakhir) {
+        const t = dataOrang[dataOrang.length - 1];
+        out.push({ w: t.created_at, teks: "🟢 " + nama + " sekarang: " + esc(labelTerakhir.slice(2)) + " (" + jamWIB(t.created_at) + ")" });
+      }
+      return out;
+    };
+    const semua = [
+      ...peristiwaDari(namaCantik(pasangan), titik.filter(t => t.sender === pasangan)),
+      ...peristiwaDari(namaCantik(saya), titik.filter(t => t.sender === saya))
+    ].sort((a, b) => a.w < b.w ? -1 : 1);
+    let html = `<div class="daftar">` + semua.map(p => `<div>${p.teks}</div>`).join("") + `</div>`;
+    const titikPs = titik.filter(t => t.sender === pasangan);
+    if (titikPs.length) {
+      const sampel = titikPs.length <= 10 ? titikPs : titikPs.filter((_, i) => i % Math.ceil(titikPs.length / 10) === 0).slice(0, 10);
+      html += `<div style="height:8px"></div><a href="https://www.google.com/maps/dir/${sampel.map(t => t.lat + "," + t.lng).join("/")}" target="_blank" rel="noopener"><button class="sekunder">Rute ${namaCantik(pasangan)} di Maps</button></a>`;
+    }
     kotak.innerHTML = html;
   } catch (e) {
     kotak.innerHTML = `<div class="kosong">Jejak belum bisa dimuat (pastikan SQL terbaru sudah dijalankan).</div>`;
@@ -709,6 +733,33 @@ async function perbaruiLokasiku() {
     await sb.from("lokasi").upsert(up);
   }
   if (!error) $("statusLokasi").textContent = "Lokasimu terkirim · diperbarui " + new Date().toLocaleTimeString("id-ID");
+  // Catat jejak untuk Jejak Live Berdua (pindah >100 m atau >30 menit)
+  try {
+    const jLat = parseFloat(localStorage.getItem("jejak_lat") || "0");
+    const jLng = parseFloat(localStorage.getItem("jejak_lng") || "0");
+    const jKapan = parseInt(localStorage.getItem("jejak_waktu") || "0", 10);
+    const pindah = !jLat || jarakM(jLat, jLng, lok.lat, lok.lng) > 100;
+    if (pindah || Date.now() - jKapan > 30 * 60 * 1000) {
+      let label = null;
+      for (const tp of tempatList) if (jarakM(lok.lat, lok.lng, tp.lat, tp.lng) <= (tp.radius || 200)) { label = "T:" + tp.nama; break; }
+      if (!label) {
+        label = "J:Perjalanan";
+        try {
+          const r = await fetch("https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" + lok.lat + "&lon=" + lok.lng + "&zoom=17&accept-language=id");
+          const j = await r.json();
+          const road = j.address && (j.address.road || j.address.pedestrian || j.address.footway);
+          const area = j.address && (j.address.suburb || j.address.village || j.address.city_district || j.address.town || j.address.city);
+          if (road) label = "J:" + road + (area ? ", " + area : "");
+        } catch (e) { }
+      }
+      const baris = { sender: saya, lat: lok.lat, lng: lok.lng, label };
+      const ins = await sb.from("jejak").insert(baris);
+      if (ins.error) { delete baris.label; await sb.from("jejak").insert(baris); }
+      localStorage.setItem("jejak_lat", lok.lat);
+      localStorage.setItem("jejak_lng", lok.lng);
+      localStorage.setItem("jejak_waktu", Date.now());
+    }
+  } catch (e) { }
 }
 $("toggleLokasi").onchange = e => {
   if (e.target.checked) {
