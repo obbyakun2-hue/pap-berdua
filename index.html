@@ -60,6 +60,14 @@
   <h1>💌 PAP Berdua</h1>
   <p class="sub">Kirim foto ke pasangan, langsung muncul di HP dia — lengkap dengan lokasimu saat mengirim.</p>
 
+  <div class="kartu" id="kartuPasang" style="display:none;border-color:#EC4899">
+    <h2 style="color:#F9A8D4">📲 Pasang di Homescreen HP ini</h2>
+    <p class="meta" style="margin:0 0 10px" id="teksPasang">Pasang PAP Berdua jadi aplikasi di homescreen — tanpa Play Store / App Store.</p>
+    <button id="btnPasang" style="display:none">Pasang Sekarang</button>
+    <p class="meta" id="langkahIos" style="display:none;margin-top:2px">Di iPhone: tap tombol <b>Bagikan</b> (kotak dengan panah ke atas) di Safari → pilih <b>“Tambah ke Layar Utama”</b> → <b>Tambah</b>. Selesai, ikon 💌 PAP Berdua muncul di homescreen.</p>
+    <p class="meta" id="langkahAndroid" style="display:none;margin-top:2px">Di Android: kalau tombol pasang belum muncul, buka menu Chrome <b>⋮</b> → <b>“Instal aplikasi”</b> / <b>“Tambahkan ke Layar Utama”</b>.</p>
+  </div>
+
   <div class="banner" id="bannerSql">⚠️ Fitur PAP belum aktif di database. Jalankan dulu SQL <b>pap-berdua.sql</b> di Supabase (SQL Editor → tempel → Run), lalu muat ulang halaman ini.</div>
 
   <!-- LOGIN -->
@@ -297,6 +305,36 @@ $("toggleLokasi").onchange = e => {
     $("statusLokasi").textContent = "Berbagi lokasi dimatikan.";
   }
 };
+
+// ---- Pasang ke homescreen (PWA) ----
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+let promptPasang = null;
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault();
+  promptPasang = e;
+  $("btnPasang").style.display = "block";
+  $("langkahAndroid").style.display = "none";
+  tampilKartuPasang();
+});
+window.addEventListener("appinstalled", () => { $("kartuPasang").style.display = "none"; });
+$("btnPasang").onclick = async () => {
+  if (!promptPasang) return;
+  promptPasang.prompt();
+  await promptPasang.userChoice;
+  promptPasang = null;
+  $("btnPasang").style.display = "none";
+};
+function tampilKartuPasang() {
+  const standalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  if (standalone) { $("kartuPasang").style.display = "none"; return; }
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  $("kartuPasang").style.display = "block";
+  if (ios) { $("langkahIos").style.display = "block"; }
+  else if (!promptPasang) { $("langkahAndroid").style.display = "block"; }
+}
+tampilKartuPasang();
 
 cekSesi();
 </script>
